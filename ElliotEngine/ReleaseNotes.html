@@ -1,0 +1,90 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv="CONTENT-TYPE" content="TEXT/HTML; CHARSET=UTF-8">
+<LINK href="/style.css" rel="stylesheet" type="text/css">
+<TITLE>Evolutionary Elliot Wave Trading Program</TITLE>
+<META name="keywords" content="Elliot Wave, stock, technical analysis">
+</HEAD>
+<BODY>
+
+<P>
+<B>EWaveTrade</B> is a tool to aid in the process of analyzing market price data using the Elliot Wave Theory, 
+particularly applying the concepts and principles developed by Glenn Neely.
+<BR>
+The book "Mastering Elliott Wave" by Glen Neely is recommended for both potential developers and users of this software. 
+
+<P>
+<B>EWaveTrade</B> Runs on Windows 98/ME/NT/2000/XP, although the core Elliot Engine sources are designed to be operating system independent.
+
+<P>
+<B>EWaveTrade</B> is a free software distributed under the GNU General Public License.
+<BR>The sources are written C++, using Microsoft Foundation Classes. Compiles with Microsoft Visual C++ 6.0 (or higher).
+
+<P>
+<B>NOTE:</B> In order to use the visualization support, you need to download a 3rd party package called ChartDirector.
+(ChartDirector is not Open Source.)
+<BR>There is a "trial version" that can be downloaded from Advanced Software 
+Engineering Limited and used for free for non-commercial purposes.
+<BR>See <a href="http://www.advsofteng.com/download.html">http://www.advsofteng.com/download.html</a>.
+<BR>This package needs to be installed as shown in this picture:
+<BR>("Copy of ElliotEngine" is where you have unzipped this project, i.e. where the sources are located.)
+<P>
+<IMG SRC="chartdirector/chartdir.png">
+
+<P>
+(The developers of the <B>EWaveTrade</B> project at SourceForge are not affiliated with Advanced Software Engineering in any way.
+<BR>That package is just used as a resource for visualizing data from <B>EWaveTrade</B>.)
+
+<P>
+Note also the the project sources contain two Visual C++ build projects; one with and one without ChartDirector.
+<BR>If you can't (or won't) download the ChartDirector package, you can still build the vanilla variant.
+<BR>This will parse an input file containing historical price data for a stock or an index, 
+<BR>and produce an output file with the identified monowaves and their Retracement Rule and Condition labels.
+
+<P>
+For more information, see the <A href="http://sourceforge.net/projects/ewavetrade">project web at SourceForge</A>.
+
+<P>
+Release history:
+
+<H3> Release 1_0_2, 2006-12-31 </H2>
+
+Added the following features:
+<UL>
+  <LI>Minor code tweaking to allow compilation with MSVC++ 2005 (moving towards standard C++ compliance)</LI>
+  <LI>Update in project file to use ChartDirector 4.1 (which now also compiles with MSVC++ 2005)</LI>
+</UL>
+
+<H3> Release 1_0_1, 2006-08-13 </H2>
+
+Added the following features:
+<UL>
+  <LI>Apply the Rules of Observation in determining wave/group relationships</LI>
+  <LI>Calculate retracements and determining which Retracement Rule and Condition applies to each monowave</LI>
+  <LI>Supported input formats:
+    <UL>
+     <LI>Stock/index history files in excel format as available on Yahoo Finance (changed format)</LI>
+	     <BR>See djia.txt as an example.
+     <LI>Files with Semicolon-separated lines in a specific format</LI>
+	     <BR>See omx_i.txt as an example.
+    </UL>
+  </LI>
+  <LI>Visualize using a 3rd party graphics library</LI>
+  <LI>If an input file is provided with intra-day data, an analysis is performed using two points per day; 
+      <BR>the highest and lowest value (in the corresponding order) per day is used as one observation point each for MonoWave identification etc.</LI>
+</UL>
+
+<H3> Release 1_0_0, 2004-03-12 </H2>
+
+Supported features:
+<UL>
+  <LI>Identifies Monowave </LI>
+  <LI>Supported input formats:
+    <UL>
+     <LI>Stock/index history files in excel format as available on Yahoo Finance</LI>
+    </UL>
+  </LI>
+  <LI>Produces a text output file showing identified monowaves</LI>
+</UL>
+
+</BODY>
