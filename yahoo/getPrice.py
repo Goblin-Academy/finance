@@ -1,7 +1,7 @@
 from yahoo_finance import Share
 #yahoo = Share('YHOO')
 #yahoo = Share('SPXC')
-yahoo = Share('^SPX')
+yahoo = Share('TFM')
 #yahoo = Share('INDU')
 #INDEXSP
 #yahoo = Share('NDX')

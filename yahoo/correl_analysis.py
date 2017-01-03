@@ -8,7 +8,9 @@ from array import array
 from scipy.stats.stats import pearsonr
 Pickle=False
 loadPickle=False
-WAIT=False
+WAIT=base.WAIT
+out_path = base.out_path
+out_file_type = base.out_file_type
 ### Relative Strength Index
 #-----------------------------------------
 def GetCorrelation(history, ref_hist, days = 10, start_date=None):
@@ -37,7 +39,7 @@ def GetCorrelation(history, ref_hist, days = 10, start_date=None):
                     
 #-----------------------------------------
 def Draw(history, ref_hist, days = 14, start_date=None):
-    ma.Style()
+    base.Style(ROOT)
     c1,pads,padScaling,ratioPadScaling = base.DoRatio(ROOT)
     
     t = ma.GetTime(start_date)
@@ -162,7 +164,7 @@ def Draw(history, ref_hist, days = 14, start_date=None):
     c1.Update()
     if start_date==None:
         start_date = first_date
-    c1.SaveAs('/Users/schae/testarea/finances/yahoo-finance/corr/'+ticker+'_'+start_date+'.pdf')
+    c1.SaveAs(out_path+'/corr/'+ticker+'_'+start_date+'.'+out_file_type)
     if WAIT:
         c1.WaitPrimitive()
         raw_input('waiting...')

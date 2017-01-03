@@ -7,8 +7,9 @@ import ROOT
 from array import array
 Pickle=False
 loadPickle=False
-WAIT=False
-
+WAIT=base.WAIT
+out_path = base.out_path
+out_file_type = base.out_file_type
 ##
 ##http://www.investopedia.com/terms/m/macd.asp
 ##What is a 'Moving Average Convergence Divergence - MACD'
@@ -18,7 +19,7 @@ WAIT=False
 
 #-----------------------------------------
 def Draw(history, days = 50, start_date=None):
-    ma.Style()
+    base.Style(ROOT)
     c1,pads,padScaling,ratioPadScaling = base.DoRatio(ROOT)
     
     t = ma.GetTime(start_date)
@@ -191,7 +192,7 @@ def Draw(history, days = 50, start_date=None):
     c1.Update()
     if start_date==None:
         start_date = first_date
-    c1.SaveAs('/Users/schae/testarea/finances/yahoo-finance/macd/'+ticker+'_'+start_date+'.pdf')
+    c1.SaveAs(out_path+'/macd/'+ticker+'_'+start_date+'.'+out_file_type)
     if WAIT:
         c1.WaitPrimitive()
         raw_input('waiting...')

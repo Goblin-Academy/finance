@@ -7,7 +7,9 @@ import ROOT
 from array import array
 Pickle=False
 loadPickle=False
-WAIT=False
+WAIT=base.WAIT
+out_path = base.out_path
+out_file_type = base.out_file_type
 
 #-----------------------------------------
 def GetVolatility(history, days = 22, start_date=None):
@@ -63,7 +65,7 @@ def GetChaikin(history, days = 20, start_date=None):
 ### Relative Strength Index
 #-----------------------------------------
 def Draw(history, days = 14, start_date=None, isVolume=0):
-    ma.Style()
+    base.Style(ROOT)
     c1,pads,padScaling,ratioPadScaling = base.DoRatio(ROOT)
     
     t = ma.GetTime(start_date)
@@ -223,11 +225,11 @@ def Draw(history, days = 14, start_date=None, isVolume=0):
     if start_date==None:
         start_date = first_date
     if isVolume==0:
-        c1.SaveAs('/Users/schae/testarea/finances/yahoo-finance/obv/'+ticker+'_'+start_date+'.pdf')
+        c1.SaveAs(out_path+'/obv/'+ticker+'_'+start_date+'.'+out_file_type)
     elif isVolume==1:
-        c1.SaveAs('/Users/schae/testarea/finances/yahoo-finance/obv/'+ticker+'_'+start_date+'volt.pdf')
+        c1.SaveAs(out_path+'/obv/'+ticker+'_'+start_date+'volt.'+out_file_type)
     elif isVolume==2:
-        c1.SaveAs('/Users/schae/testarea/finances/yahoo-finance/obv/'+ticker+'_'+start_date+'chaikin.pdf')                
+        c1.SaveAs(out_path+'/obv/'+ticker+'_'+start_date+'chaikin.'+out_file_type)
     if WAIT:
         c1.WaitPrimitive()
         raw_input('waiting...')
@@ -246,7 +248,7 @@ def runWithTicker(yahoo, history=None):
         return []
     
 #-----------------------------------------
-def run(ticker='JACK'):
+def run(ticker='GOOGL'):
     if not WAIT:
         ROOT.gROOT.SetBatch(True)
     

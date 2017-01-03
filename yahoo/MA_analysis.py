@@ -1,4 +1,5 @@
 from yahoo_finance import Share
+import yahoo_finance
 import httplib
 import pickle
 import sys, time, datetime
@@ -8,20 +9,10 @@ import socket
 from array import array
 Pickle=False
 loadPickle=False
-WAIT=False
+WAIT=base.WAIT
 
-#-----------------------------------------
-def Style():
-    #try:
-    #    #ROOT.SetAtlasStyle()
-    #    getattr(ROOT,'SetAtlasStyle')
-    #except (AttributeError):
-    sys.stdout.flush()
-    if not hasattr(ROOT,'SetAtlasStyle'):
-        ROOT.gROOT.LoadMacro('/Users/schae/testarea/CAFAna/HWWMVACode/atlasstyle-00-03-05/AtlasStyle.C')                   
-        ROOT.gROOT.LoadMacro('/Users/schae/testarea/CAFAna/HWWMVACode/atlasstyle-00-03-05/AtlasUtils.C')
-        ROOT.SetAtlasStyle()
-
+out_path = base.out_path
+out_file_type = base.out_file_type
 #-----------------------------------------    
 def GetShare(ticker='YHOO'):
     return Share(ticker)
@@ -42,15 +33,15 @@ def GetHistoricalData(yahoo, start_date=None): #'2016-02-07'
     history_stocks_info = None 
     #print history_stocks_info
     if Pickle:
-        pickle.dump( history_stocks_info, open( '/Users/schae/testarea/finances/yahoo-finance/out/stocks_%s.p' %(yahoo._key), "wb" ) )
+        pickle.dump( history_stocks_info, open( out_path+'/out/stocks_%s.p' %(yahoo._key), "wb" ) )
         sys.exit(0)
     elif loadPickle:
-        history_stocks_info = pickle.load( open( "/Users/schae/testarea/finances/yahoo-finance/out/stocks_%s.p" %(yahoo._key), "rb" ) )
+        history_stocks_info = pickle.load( open( out_path+"/out/stocks_%s.p" %(yahoo._key), "rb" ) )
     else:
         while history_stocks_info==None:
             try:
                 history_stocks_info = yahoo.get_historical('2014-06-07', start_date)
-            except (socket.gaierror, socket.error, httplib.BadStatusLine):
+            except (socket.gaierror, socket.error, httplib.BadStatusLine, yahoo_finance.YQLResponseMalformedError):
                 print 'socket.gaierror...retrying in 5s'
                 history_stocks_info=None
                 time.sleep(5.0)
@@ -221,7 +212,7 @@ def AnalyzeMA(long_ma, short_ma):
 
 #----------------
 def Draw(history, days = 50, start_date=None):
-    Style()
+    base.Style(ROOT)
     c1 = ROOT.TCanvas("c1","stocks",50,50,600,600);
     t = GetTime(start_date)
 
@@ -380,7 +371,7 @@ def Draw(history, days = 50, start_date=None):
     c1.Update()
     if start_date==None:
         start_date = first_date
-    c1.SaveAs('/Users/schae/testarea/finances/yahoo-finance/ma/'+ticker+'_'+start_date+'.pdf')
+    c1.SaveAs(out_path+'/ma/'+ticker+'_'+start_date+'.'+out_file_type)
     if WAIT:
         c1.WaitPrimitive()
         raw_input('waiting...')
@@ -436,7 +427,7 @@ def Draw(history, days = 50, start_date=None):
     if start_date==None:
         start_date = first_date
     new_ticker = ticker.replace('^','_')
-    c1.SaveAs('/Users/schae/testarea/finances/yahoo-finance/ma/'+new_ticker+'_'+start_date+'bol.pdf')
+    c1.SaveAs(out_path+'/ma/'+new_ticker+'_'+start_date+'bol.'+out_file_type)
     if WAIT:
         c1.WaitPrimitive()
         raw_input('waiting...')
@@ -463,7 +454,7 @@ def runWithTicker(yahoo, history=None):
     return Draw(history, 200, GetToday()),history
     #print 'Done'        
 #-----------------------------------------
-def run(ticker='GOOGL'):
+def run(ticker='TFM'):
     if not WAIT:
         ROOT.gROOT.SetBatch(True)
     

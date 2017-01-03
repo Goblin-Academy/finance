@@ -7,6 +7,9 @@ import datetime
 import send_sms
 import sys
 import pickle
+import genHTML as myHTML
+out_path = '/Users/schae/testarea/finances'
+
 REPORT_SELL_ONLY_IF_I_OWN=True
 #0 make the current script stable enough to run all day. Perhaps compress the data saved
 #1 pickle the list of messages. Changes in stock prices. reload them when the code is restarted
@@ -92,7 +95,7 @@ class Data():
 #----------------------
 def GetLimits():
     vv = {}
-    fin = open('/Users/schae/testarea/finances/yahoo-finance/rsi/rsi_limits.txt','r')
+    fin = open(out_path+'/yahoo-finance/rsi/rsi_limits.txt','r')
     for f in fin:
         if len(f.strip())==0:
             continue
@@ -100,7 +103,7 @@ def GetLimits():
         vv[vals[0]] = Data(vals[0],vals)
     fin.close()
 
-    finma = open('/Users/schae/testarea/finances/yahoo-finance/ma/ma_limits.txt','r')
+    finma = open(out_path+'/yahoo-finance/ma/ma_limits.txt','r')
     for f in finma:
         if len(f.strip())==0:
             continue
@@ -277,13 +280,13 @@ def check(flist, fout, ticker='GOOGL',min_price=710.0, max_price=805.0, stock_ex
     #        break
     #print price
 t = time.localtime()
-f = open('/Users/schae/testarea/finances/googlefinance/out/stocks_%s_%s_%s.txt' %(t.tm_year,t.tm_mon,t.tm_mday),'w')
-#f = open('/Users/schae/testarea/finances/googlefinance/out/stocks_%s_%s_%sb.txt' %(t.tm_year,t.tm_mon,t.tm_mday),'w')
+f = open(out_path+'/googlefinance/out/stocks_%s_%s_%s.txt' %(t.tm_year,t.tm_mon,t.tm_mday),'w')
+#f = open(out_path+'/googlefinance/out/stocks_%s_%s_%sb.txt' %(t.tm_year,t.tm_mon,t.tm_mday),'w')
 
 history_stock_info=None
 if not Pickle:
-    #history_stock_info = pickle.load( open( "/Users/schae/testarea/finances/googlefinance/out/stocks_2016_2_5.p", "rb" ) )
-    history_stock_info = pickle.load( open( "/Users/schae/testarea/finances/googlefinance/out/stocks_2016_3_10.p", "rb"))
+    #history_stock_info = pickle.load( open( out_path+"/googlefinance/out/stocks_2016_2_5.p", "rb" ) )
+    history_stock_info = pickle.load( open( out_path+"/googlefinance/out/stocks_2016_3_10.p", "rb"))
 while True:
 
     t = time.localtime()
@@ -524,14 +527,16 @@ while True:
     stock_info = RequestStocks(stock_names, f)
 
     if Pickle:
-        pickle.dump( stock_info, open( '/Users/schae/testarea/finances/googlefinance/out/stocks_%s_%s_%s.p' %(t.tm_year,t.tm_mon,t.tm_mday), "wb" ) )
+        pickle.dump( stock_info, open( out_path+'/googlefinance/out/stocks_%s_%s_%s.p' %(t.tm_year,t.tm_mon,t.tm_mday), "wb" ) )
         sys.exit(0)
 
     map_for_rsi = GetLimits()
     # process the existing information
     for i in stock_list:
         check(stock_info, f, i[0], i[1], i[2], i[3], history_stock_info, isPreMarket, map_for_rsi)
-                      
+
+    myHTML.main('%s-%s-%s' %(t.tm_hour, t.tm_min, t.tm_sec), map_for_rsi)
+    
     f.write('------------------------------------------\n')
     #print 'flush'
     #sys.stdout.flush()

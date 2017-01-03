@@ -5,7 +5,9 @@ import base
 import sys, time
 import ROOT
 from array import array
-WAIT=False
+WAIT=base.WAIT
+out_path = base.out_path
+out_file_type = base.out_file_type
 
 #%K = 100[(C - L14)/(H14 - L14)]
 #
@@ -163,7 +165,7 @@ def GetRSI(history, days = 14, start_date=None):
                     
 #-----------------------------------------
 def Draw(history, days = 14, start_date=None):
-    ma.Style()
+    base.Style(ROOT)
     c1,pads,padScaling,ratioPadScaling = base.DoRatio(ROOT)
     
     t = ma.GetTime(start_date)
@@ -285,7 +287,7 @@ def Draw(history, days = 14, start_date=None):
     c1.Update()
     if start_date==None:
         start_date = first_date
-    c1.SaveAs('/Users/schae/testarea/finances/yahoo-finance/rsi/'+ticker+'_'+start_date+'.pdf')
+    c1.SaveAs(out_path+'/rsi/'+ticker+'_'+start_date+'.'+out_file_type)
     if WAIT:
         c1.WaitPrimitive()
         raw_input('waiting...')
@@ -308,7 +310,7 @@ def Draw(history, days = 14, start_date=None):
     c1.Update()
     if start_date==None:
         start_date = first_date
-    c1.SaveAs('/Users/schae/testarea/finances/yahoo-finance/stoch/'+ticker+'_'+start_date+'.pdf')
+    c1.SaveAs(out_path+'/stoch/'+ticker+'_'+start_date+'.'+out_file_type)
     if WAIT:
         c1.WaitPrimitive()
         raw_input('waiting...')
@@ -346,7 +348,7 @@ def runWithTicker(yahoo,history=None):
         return []
     
 #-----------------------------------------
-def run(ticker='F'):
+def run(ticker='AMZN'):
     if not WAIT:
         ROOT.gROOT.SetBatch(True)
     
