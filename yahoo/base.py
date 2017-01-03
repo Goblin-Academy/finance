@@ -1,4 +1,5 @@
 import math
+import sys
 WAIT=False
 style_path = '/Users/schae/testarea/CAFAna/HWWMVACode'
 out_path = '/Users/schae/testarea/finances/yahoo-finance'
