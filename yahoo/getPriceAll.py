@@ -143,7 +143,7 @@ stocks_info=None
 while stocks_info==None:
     try:
         stocks_info = RequestStocks(stock_names, f)
-    except (socket.gaierror):
+    except (socket.gaierror, urllib2.HTTPError):
         print 'socket.gaierror...retrying in 5s'
         stocks_info=None
         time.sleep(5.0)    

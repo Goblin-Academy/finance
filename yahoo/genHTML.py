@@ -4,6 +4,7 @@ import os
 #import getPriceAll as price
 out_path = base.out_path
 out_file_type = base.out_file_type
+html_path_plots = base.html_path
 
 stock_list = [
         # Check stocks
@@ -14,29 +15,32 @@ stock_list = [
 stock_list = base.stock_list    
 
 def genPlotPage(ticker='GOOGL', date='2016-09-14'):
-    PLOTFILE = out_path+'/plot_html/'+ticker+'_'+date+'.html'
+    day_path = html_path_plots+'/'+date
+    if not os.path.exists(day_path):
+        os.mkdir(day_path)
+    PLOTFILE = day_path+'/'+ticker+'_'+date+'.html'
     # Check if the file exists
-    if os.file.exists(PLOTFILE):
-        return
+    if os.path.exists(PLOTFILE):
+        return PLOTFILE.replace(html_path_plots+'/','')
     
     line='<html>\n'
     line+='   <head>\n'
     line+='       <title>Plots for Ticker: %s</title>\n' %(ticker)
     line+='   </head>\n'
     line+='   <body>\n'
-
-    plot_data = [[out_path+'/ma/%s_%s.png' %(ticker,date)],
-                 [out_path+'/ma/%s_%sbol.png' %(ticker,date)],
-                 [out_path+'/macd/%s_%s.png' %(ticker,date)],
-                 [out_path+'/obv/%s_%s.png' %(ticker,date)],
-                 [out_path+'/obv/%s_%svolt.png' %(ticker,date)],
-                 [out_path+'/obv/%s_%schaikin.png' %(ticker,date)],
-                 [out_path+'/corr/%s_%s.png' %(ticker,date)],
-                 [out_path+'/rsi/%s_%s.png' %(ticker,date)],
-                 [out_path+'/stoch/%s_%s.png' %(ticker,date)],
+    out_path_plot='..'
+    plot_data = [[out_path_plot+'/ma/%s_%s.png' %(ticker,date)],
+                 [out_path_plot+'/ma/%s_%sbol.png' %(ticker,date)],
+                 [out_path_plot+'/macd/%s_%s.png' %(ticker,date)],
+                 [out_path_plot+'/obv/%s_%s.png' %(ticker,date)],
+                 [out_path_plot+'/obv/%s_%svolt.png' %(ticker,date)],
+                 [out_path_plot+'/obv/%s_%schaikin.png' %(ticker,date)],
+                 [out_path_plot+'/corr/%s_%s.png' %(ticker,date)],
+                 [out_path_plot+'/rsi/%s_%s.png' %(ticker,date)],
+                 [out_path_plot+'/stoch/%s_%s.png' %(ticker,date)],
                  ]
     for i in plot_data: 
-        i[0]='<img src="%s" alt="N/A" width="400" />' %i[0]
+        i[0]='<img src="%s" alt="N/A" width="1000" />' %i[0]
         #'<span class="stock-quote" data-symbol="%s"></span>' %ticker,
     line+=HTML.table(plot_data)
     line+='   </body>\n'    
@@ -45,10 +49,12 @@ def genPlotPage(ticker='GOOGL', date='2016-09-14'):
     fticker = open(PLOTFILE, 'w')
     fticker.write(line)
     fticker.close()
+    #print PLOTFILE.replace('/var/www/html/','') 
+    return PLOTFILE.replace(html_path_plots+'/','')
     
-def main(date='2016-12-29',map_for_rsi=[]):
+def main(date='2017-01-03',map_for_rsi=[]):
     # open an HTML file to show output in a browser
-    HTMLFILE = out_path+'/plot_html/day_%s_output.html' %date
+    HTMLFILE = html_path_plots+'/day_%s_output.html' %date
     f = open(HTMLFILE, 'w')
 
     f.write('<link rel="stylesheet" type="text/css" href="/Users/schae/testarea/finances/jquery-stockquotes/bower_components/jquery-stockquotes/dist/jquery.stockquotes.css" />\n')
@@ -59,8 +65,10 @@ def main(date='2016-12-29',map_for_rsi=[]):
         ['Stock','Price','MA'],
         ]
     for i in stock_list:
-        genPlotPage(i[0],date)
-        table_line=[i[0],5.0, '<span class="stock-quote" data-symbol="%s"></span>' %i[0],'<img src="%s/ma/%s_%s.png" alt="N/A" width="400" />' %(out_path,i[0],date)]
+        html_path = genPlotPage(i[0],date)
+        table_line=['<a href="%s">%s</a>' %(html_path,i[0]),5.0, '<span class="stock-quote" data-symbol="%s"></span>' %i[0],'<img src="%s/ma/%s_%s.png" alt="N/A" width="400" />' %(out_path,i[0],date)]
+        #'<link rel="next" type="media_type" href="%s">' %html_path
+        
         table_data+=[table_line]
         
     htmlcode = HTML.table(table_data)

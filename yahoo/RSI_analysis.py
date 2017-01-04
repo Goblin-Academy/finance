@@ -19,7 +19,7 @@ out_file_type = base.out_file_type
 ### Relative Strength Index
 #-----------------------------------------
 def GetStochastic(history, days = 14, start_date=None):
-    t=ma.GetTime(start_date)
+    t=base.GetTime(start_date)
     this_date_index=None
     this_date_index_n = 0
     #print 'start_date',start_date
@@ -28,7 +28,7 @@ def GetStochastic(history, days = 14, start_date=None):
     
     for hindex in range(0,len(history)):
         h = history[len(history)-hindex-1]
-        this_t = ma.GetTime(h['Date'])
+        this_t = base.GetTime(h['Date'])
         #print 'this: ',h['Date']
         if this_t<=t:
             this_date_index=hindex
@@ -77,11 +77,11 @@ def GetStochastic(history, days = 14, start_date=None):
 ### Relative Strength Index
 #-----------------------------------------
 def GetRSI(history, days = 14, start_date=None):
-    t=ma.GetTime(start_date)
+    t=base.GetTime(start_date)
     this_date_index=None
     for hindex in range(0,len(history)):
         h = history[len(history)-hindex-1]
-        this_t = ma.GetTime(h['Date'])
+        this_t = base.GetTime(h['Date'])
         if this_t<=t:
             this_date_index=hindex
         else:
@@ -168,7 +168,7 @@ def Draw(history, days = 14, start_date=None):
     base.Style(ROOT)
     c1,pads,padScaling,ratioPadScaling = base.DoRatio(ROOT)
     
-    t = ma.GetTime(start_date)
+    t = base.GetTime(start_date)
 
     x_axis=[]
     bins_price=[]
@@ -180,7 +180,7 @@ def Draw(history, days = 14, start_date=None):
     ticker='N/A'
     first_date=None
     for h in history:
-        this_t = ma.GetTime(h['Date'])
+        this_t = base.GetTime(h['Date'])
         if this_t<=t:
             x_axis+=[nday]
             ticker = h['Symbol']

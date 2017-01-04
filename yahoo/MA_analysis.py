@@ -6,6 +6,7 @@ import sys, time, datetime
 import ROOT
 import base
 import socket
+import urllib2
 from array import array
 Pickle=False
 loadPickle=False
@@ -29,7 +30,7 @@ def BasicData(yahoo):
 def GetHistoricalData(yahoo, start_date=None): #'2016-02-07'
 
     if start_date==None:
-        start_date = GetToday()
+        start_date = base.GetToday()
     history_stocks_info = None 
     #print history_stocks_info
     if Pickle:
@@ -41,43 +42,16 @@ def GetHistoricalData(yahoo, start_date=None): #'2016-02-07'
         while history_stocks_info==None:
             try:
                 history_stocks_info = yahoo.get_historical('2014-06-07', start_date)
-            except (socket.gaierror, socket.error, httplib.BadStatusLine, yahoo_finance.YQLResponseMalformedError):
+            except (socket.gaierror, socket.error, httplib.BadStatusLine, yahoo_finance.YQLResponseMalformedError, urllib2.HTTPError):
                 print 'socket.gaierror...retrying in 5s'
+                sys.stdout.flush()
                 history_stocks_info=None
-                time.sleep(5.0)
+                time.sleep(30.0)
     return history_stocks_info
 
 #---------------
-def GetToday():
-    t = time.localtime()
-    mon = '%s' %t.tm_mon
-    day = '%s' %t.tm_mday
-    if t.tm_mon<10:
-        mon = '0%s' %t.tm_mon
-    if t.tm_mday<10:
-        day = '0%s' %t.tm_mday
-    start_date = '%s-%s-%s' %(t.tm_year, mon, day)
-    return start_date
-
-#---------------
-def GetTime(start_date=None):
-    t=None
-    if start_date==None:
-        t = time.localtime()
-        mon = '%s' %t.tm_mon
-        day = '%s' %t.tm_mday
-        if t.tm_mon<10:
-            mon = '0%s' %t.tm_mon
-        if t.tm_mday<10:
-            day = '0%s' %t.tm_mday
-        start_date = '%s-%s-%s' %(t.tm_year, mon, day)
-    else:
-        t = time.strptime(start_date, "%Y-%m-%d")
-    return t
-
-#---------------
 def GetStdDev(istart, days = 20, multiple=2.0, ma_list=[], start_date=None):
-    #t=GetTime(start_date)
+    #t=base.GetTime(start_date)
 
     #avg=0.0
     #iter_days = 0
@@ -94,12 +68,12 @@ def GetStdDev(istart, days = 20, multiple=2.0, ma_list=[], start_date=None):
 
 #---------------
 def GetAverage(history, days = 50, start_date=None):
-    t=GetTime(start_date)
+    t=base.GetTime(start_date)
     line=[]
     avg=0.0
     iter_days = 0
     for h in history:
-        this_t = GetTime(h['Date'])
+        this_t = base.GetTime(h['Date'])
         if this_t<=t:
             iter_days+=1
             avg+=float(h['Close'])
@@ -160,7 +134,7 @@ def GetExpMovingAverageFromList(my_list, days = 9, start_point=0):
 
 #---------------
 def GetExpMovingAverage(history, days = 50, start_date=None):
-    t=GetTime(start_date)
+    t=base.GetTime(start_date)
     k = 2.0 / (days + 1.0);
     #tod = datetime.datetime.now()
     #d = datetime.timedelta(days = days)
@@ -174,7 +148,7 @@ def GetExpMovingAverage(history, days = 50, start_date=None):
     this_date_index = 0
     for hindex in range(0,len(history)):
         h = history[len(history)-hindex-1]
-        this_t = GetTime(h['Date'])
+        this_t = base.GetTime(h['Date'])
         #this_ttd = datetime.datetime.fromtimestamp(time.mktime(this_t))
         if this_t<=t:
             this_date_index=hindex
@@ -185,7 +159,7 @@ def GetExpMovingAverage(history, days = 50, start_date=None):
         #print this_date_index-days+1,' ',len(history)
         for hindex in range(this_date_index-days+1,len(history)):
             h = history[len(history)-hindex-1]
-            this_t = GetTime(h['Date'])
+            this_t = base.GetTime(h['Date'])
             if this_t<=t:
                 iter_days+=1
                 if prev_ema<0.0:
@@ -214,7 +188,7 @@ def AnalyzeMA(long_ma, short_ma):
 def Draw(history, days = 50, start_date=None):
     base.Style(ROOT)
     c1 = ROOT.TCanvas("c1","stocks",50,50,600,600);
-    t = GetTime(start_date)
+    t = base.GetTime(start_date)
 
     Nbolganger=2.0
     NbolgangerMA=20
@@ -235,7 +209,7 @@ def Draw(history, days = 50, start_date=None):
     ticker='N/A'
     first_date=None
     for h in history:
-        this_t = GetTime(h['Date'])
+        this_t = base.GetTime(h['Date'])
         if this_t<=t:
             if (nday)<(days):
                 x_axis+=[nday]
@@ -451,7 +425,7 @@ def runWithTicker(yahoo, history=None):
     #avg_20day = GetAverage(history, 20, '2016-01-15')
     #avg_200day = GetAverage(history, 200, '2016-01-15')
     #return Draw(history, 200, '2016-02-17')
-    return Draw(history, 200, GetToday()),history
+    return Draw(history, 200, base.GetToday()),history
     #print 'Done'        
 #-----------------------------------------
 def run(ticker='TFM'):

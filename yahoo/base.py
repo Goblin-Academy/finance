@@ -1,8 +1,14 @@
 import math
 import sys
+import time
 WAIT=False
 style_path = '/Users/schae/testarea/CAFAna/HWWMVACode'
 out_path = '/Users/schae/testarea/finances/yahoo-finance'
+
+html_path = '/var/www/html/finance/plot_html'
+
+style_path = '/home/doug'
+out_path = '/home/doug/testarea/finance/yahoo-finance'
 out_file_type = 'png'
 #------------------
 def mean(data):
@@ -109,6 +115,35 @@ def DoRatio(ROOT):
         pads[0].cd()
         #base.Format([h,htada],ROOT,True, padScaling,hist_name='')
     return c1,pads,padScaling,ratioPadScaling
+
+#---------------
+def GetToday():
+    t = time.localtime()
+    mon = '%s' %t.tm_mon
+    day = '%s' %t.tm_mday
+    if t.tm_mon<10:
+        mon = '0%s' %t.tm_mon
+    if t.tm_mday<10:
+        day = '0%s' %t.tm_mday
+    start_date = '%s-%s-%s' %(t.tm_year, mon, day)
+    return start_date
+
+#---------------
+def GetTime(start_date=None):
+    t=None
+    if start_date==None:
+        t = time.localtime()
+        mon = '%s' %t.tm_mon
+        day = '%s' %t.tm_mday
+        if t.tm_mon<10:
+            mon = '0%s' %t.tm_mon
+        if t.tm_mday<10:
+            day = '0%s' %t.tm_mday
+        start_date = '%s-%s-%s' %(t.tm_year, mon, day)
+    else:
+        t = time.strptime(start_date, "%Y-%m-%d")
+    return t
+
 #-----------------------------------------  
 def SeperationPower(h1o, h2o):
     h1 = h1o.Clone()
@@ -383,7 +418,7 @@ stock_list = [
         ['M',35.0,55.0], # macy's 
         ['MMM',132.0,170.0], # 3M
         ['TSO',50.0,105.0], # Tesoro
-        ['NTI',20.0,30.0], # northern tier refinery. pays 15 % dividend
+    #['NTI',20.0,30.0], # northern tier refinery. pays 15 % dividend
         ['INTC',25.0,34.0], # intel 3.55% dividend
         ['BCS',5.0,15.0], # barclays
         ['CS',5.0,15.0], # credit suisse banking stock. 6.7% dividend
@@ -463,7 +498,7 @@ stock_list = [
         ['LPNT',60.0,80.0], # urgent care mid cap. check carefully. no dividend
         ['THC',23.0,30.0], # urgent care/intensive care mid cap. check carefully. no dividend
 
-        ['SHAK',33.0,60.0], # shake shack.
+        #['SHAK',33.0,60.0], # shake shack.
         ['UAL',45.0,70.0], # united airlines
 
         ['VOO',100.0,200.0], # vanguard MUTF

@@ -22,7 +22,7 @@ def Draw(history, days = 50, start_date=None):
     base.Style(ROOT)
     c1,pads,padScaling,ratioPadScaling = base.DoRatio(ROOT)
     
-    t = ma.GetTime(start_date)
+    t = base.GetTime(start_date)
 
     x_axis=[]
     bins_price=[]
@@ -38,7 +38,7 @@ def Draw(history, days = 50, start_date=None):
     ticker='N/A'
     first_date=None
     for h in history:
-        this_t = ma.GetTime(h['Date'])
+        this_t = base.GetTime(h['Date'])
         if this_t<=t:
             x_axis+=[nday]
             ticker = h['Symbol']

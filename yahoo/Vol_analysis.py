@@ -18,9 +18,9 @@ def GetVolatility(history, days = 22, start_date=None):
     nday=0
     ticker='N/A'
     first_date=None
-    t = ma.GetTime(start_date)
+    t = base.GetTime(start_date)
     for h in history:
-        this_t = ma.GetTime(h['Date'])
+        this_t = base.GetTime(h['Date'])
         if this_t<=t:
             ticker = h['Symbol']
             if first_date==None:
@@ -39,12 +39,12 @@ def GetChaikin(history, days = 20, start_date=None):
     nday=0
     ticker='N/A'
     first_date=None
-    t = ma.GetTime(start_date)
+    t = base.GetTime(start_date)
     chaikin=0.0
     vol=0.0
     for h in history:
         #print h
-        this_t = ma.GetTime(h['Date'])
+        this_t = base.GetTime(h['Date'])
         if this_t<=t:
             ticker = h['Symbol']
             if first_date==None:
@@ -68,7 +68,7 @@ def Draw(history, days = 14, start_date=None, isVolume=0):
     base.Style(ROOT)
     c1,pads,padScaling,ratioPadScaling = base.DoRatio(ROOT)
     
-    t = ma.GetTime(start_date)
+    t = base.GetTime(start_date)
 
     x_axis=[]
     x_e_axis=[]
@@ -83,7 +83,7 @@ def Draw(history, days = 14, start_date=None, isVolume=0):
     first_date=None
     hindex=0
     for h in history:
-        this_t = ma.GetTime(h['Date'])
+        this_t = base.GetTime(h['Date'])
         if this_t<=t:
             if nday>0:
                 x_axis+=[float(nday)]
