@@ -59,19 +59,43 @@ def main(date='2017-01-03',map_for_rsi=[]):
 
     f.write('<link rel="stylesheet" type="text/css" href="/Users/schae/testarea/finances/jquery-stockquotes/bower_components/jquery-stockquotes/dist/jquery.stockquotes.css" />\n')
     f.write('<script type="text/javascript" src="/Users/schae/testarea/finances/jquery-stockquotes/bower_components/jquery-stockquotes/dist/jquery.stockquotes.js"></script>\n')
+    f.write('<script src="sorttable.js"></script>\n')
     
     #<img src="graph_legend.png" />
-    table_data = [
-        ['Stock','Price','MA'],
-        ]
+    header_row = ['Stock','Price','20 Day MA','50 Day MA','100 Day MA','200 Day MA','RSI','Stochastic','MA']
+    table_data = []
     for i in stock_list:
         html_path = genPlotPage(i[0],date)
-        table_line=['<a href="%s">%s</a>' %(html_path,i[0]),5.0, '<span class="stock-quote" data-symbol="%s"></span>' %i[0],'<img src="%s/ma/%s_%s.png" alt="N/A" width="400" />' %(out_path,i[0],date)]
+        price = 5.0
+        rsi = -1.0
+        rsi_overbought_price = -1.0
+        rsi_underbought_price = -1.0
+        stoch = -1.0
+        stoch_overbought_price = -1.0
+        stoch_underbought_price = -1.0
+        ma_20day = -1.0
+        ma_50day = -1.0
+        ma_100day = -1.0
+        ma_200day = -1.0
+        if i[0] in map_for_rsi:
+            price = map_for_rsi[i[0]].price
+            ma_20day = map_for_rsi[i[0]].ma_20day
+            ma_50day = map_for_rsi[i[0]].ma_50day
+            ma_100day = map_for_rsi[i[0]].ma_100day
+            ma_200day = map_for_rsi[i[0]].ma_200day
+            rsi = map_for_rsi[i[0]].rsi
+            rsi_overbought_price = map_for_rsi[i[0]].rsi_overbought_price
+            rsi_underbought_price = map_for_rsi[i[0]].rsi_underbought_price
+            stoch = map_for_rsi[i[0]].stoch
+            stoch_overbought_price = map_for_rsi[i[0]].stoch_overbought_price
+            stoch_underbought_price = map_for_rsi[i[0]].stoch_underbought_price
+        
+        table_line=['<a href="%s">%s</a>' %(html_path,i[0]),price, ma_20day,ma_50day,ma_100day,ma_200day,rsi, stoch, '<span class="stock-quote" data-symbol="%s"></span>' %i[0],'<img src="%s/ma/%s_%s.png" alt="N/A" width="400" />' %(out_path,i[0],date)]
         #'<link rel="next" type="media_type" href="%s">' %html_path
         
         table_data+=[table_line]
         
-    htmlcode = HTML.table(table_data)
+    htmlcode = HTML.table(table_data,header_row=header_row,attribs={'class':"sortable"})
     #print htmlcode
     f.write(htmlcode)
     #f.write('<p>')
