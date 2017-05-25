@@ -30,7 +30,7 @@ def BasicData(yahoo):
     print yahoo.get_trade_datetime()
     #'2014-02-05 20:50:00 UTC+0000'
 #-----------------------------------------
-def GetHistoricalData(yahoo, start_date=None): #'2016-02-07'
+def GetHistoricalData(yahoo, start_date=None, ticker=''): #'2016-02-07'
 
     if start_date==None:
         start_date = base.GetToday()
@@ -445,13 +445,13 @@ def Draw(history, days = 50, start_date=None):
     return aa
 
 #-----------------------------------------
-def runWithTicker(yahoo, history=None):
+def runWithTicker(yahoo, history=None, ticker=''):
     if not WAIT:
         ROOT.gROOT.SetBatch(True)
     #BasicData(yahoo)
     #print 'Get History'
     if history==None:
-        history = GetHistoricalData(yahoo)
+        history = GetHistoricalData(yahoo, ticker=ticker)
     #print 'compute 50 day average'
     #avg_50day = GetAverage(history, 50, '2016-01-15')
     #avg_20day = GetAverage(history, 20, '2016-01-15')
@@ -465,7 +465,7 @@ def run(ticker='JACK'):
         ROOT.gROOT.SetBatch(True)
     
     yahoo = GetShare(ticker)
-    runWithTicker(yahoo)
+    runWithTicker(yahoo, ticker=ticker)
     
 if __name__ == "__main__":
         

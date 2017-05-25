@@ -157,7 +157,7 @@ if True:
     itern=0
     maline=''
     for s in stocks_info:
-        myinfo,mahistory = MA_analysis.runWithTicker(s)
+        myinfo,mahistory = MA_analysis.runWithTicker(s,ticker=stock_names[itern])
         if len(myinfo)==0:
             print 'Failed... for ',s
             continue
