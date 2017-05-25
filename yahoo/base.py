@@ -9,6 +9,7 @@ html_path = '/var/www/html/finance/plot_html'
 
 style_path = '/home/doug'
 out_path = '/home/doug/testarea/finance/yahoo-finance'
+out_path_www = '/var/www/html/finance/plot_html'
 out_file_type = 'png'
 #------------------
 def mean(data):
@@ -142,6 +143,31 @@ def GetTime(start_date=None):
         start_date = '%s-%s-%s' %(t.tm_year, mon, day)
     else:
         t = time.strptime(start_date, "%Y-%m-%d")
+    return t
+
+#---------------
+def GetTimeStr(start_date=None):
+    t=None
+    if start_date==None:
+        t = time.localtime()
+        mon = '%s' %t.tm_mon
+        day = '%s' %t.tm_mday
+        if t.tm_mon<10:
+            mon = '0%s' %t.tm_mon
+        if t.tm_mday<10:
+            day = '0%s' %t.tm_mday
+        t = '%s-%s-%s' %(t.tm_year, mon, day)
+    else:
+        try:
+            t = time.strptime(start_date, "%Y-%m-%d")
+        except:
+            mon = '%s' %start_date.tm_mon
+            day = '%s' %start_date.tm_mday
+            if start_date.tm_mon<10:
+                mon = '0%s' %start_date.tm_mon
+            if start_date.tm_mday<10:
+                day = '0%s' %start_date.tm_mday
+            t = '%s-%s-%s' %(start_date.tm_year, mon, day)
     return t
 
 #-----------------------------------------  
@@ -393,13 +419,19 @@ stock_list = [
         ['AAPL',86.0,110.0], # apple
         ['MAT',25.0,40.0], # matel
         ['FB',93.0,130.0],
+        ['X',20.0,55.0,'NYSE'],  # steel industry
+        ['SCCO',20.0,55.0,'NYSE'],  # copper company 0.5%
+        ['SPR',20.0,105.0,'NYSE'],  # spirit airlines 0.7%
+        ['SFLY',20.0,105.0,'NASDAQ'],  # spirit airlines 0.7%
         ['MPC',30.0,48.0],  # marathon gas refinery
+        ['WNR',25.0,80.0,'NYSE'],  # western refinery 4.% dividend.
         ['CHK',4.0,7.0],  # cheseapeak
         ['KORS',45.0,60.0], # cosmetics
         ['NGL',5.0,15.0], # pipeline company
         ['CVX',78.0,100.0], # chevron
-        #['UA',35.0,50.0], # under armour
+        ['UAA',35.0,50.0], # under armour
         ['KR',35.0,50.0], # kroger. 1%
+        ['SKT',25.0,50.0,'NYSE'], # tanger, 3.5% dividend  
         ['TGT',65.0,85.0], # target. 3%        
         ['CVS',80.0,120.0], # CVS 1.6%
         #['TFM',25.0,35.0], # fresh market
@@ -415,11 +447,15 @@ stock_list = [
         ['F',10.0,15.0], # ford
         ['GM',25.0,40.0], # GM
         ['VZ',45.0,55.0], # verizon
-        ['M',35.0,55.0], # macy's 
+        ['AMT',45.0,155.0,'NYSE'], # connection tower company. 2.2% dividend
+        ['M',35.0,55.0], # macy's
+        ['TUES',1.0,55.0,'NASDAQ'], # tuesday morning corp
+        ['SXI',1.0,155.0,'NYSE'], # standex
         ['MMM',132.0,170.0], # 3M
         ['TSO',50.0,105.0], # Tesoro
     #['NTI',20.0,30.0], # northern tier refinery. pays 15 % dividend
         ['INTC',25.0,34.0], # intel 3.55% dividend
+        ['NVDA',25.0,234.0,'NASDAQ'], # nvidia 0.55% dividend    
         ['BCS',5.0,15.0], # barclays
         ['CS',5.0,15.0], # credit suisse banking stock. 6.7% dividend
         ['UBS',8.0,20.0], # ubs. 6.4% dividend
@@ -448,8 +484,13 @@ stock_list = [
         ['ADR',50.0,85.0], # novartis
         ['SLP',6.0,15.0], # Simulations Plus. 1.8% dividend. biomedical
         ['GVP',2.0,3.0], # GSE nuclear, oil simulations company
-        ['TAP',80.0,100.0], # molson beer. 1.8% dividend
-        ['RTN',115.0,160.0], # ratheon. defense. 2.1% dividend
+        ['TAP',80.0,120.0], # molson beer. 1.8% dividend
+        ['RTN',115.0,160.0,'NYSE'], # ratheon. defense. 2.1% dividend
+        ['GD',150.0,300.0,'NYSE'], # general dynamics corp. 1.6%
+        ['GE',15.0,300.0,'NYSE'], # general dynamics corp. 3.2%
+        ['CXW',15.0,300.0,'NYSE'], # corecivics. jailing. 5.8% dividend
+        ['GEO',15.0,300.0,'NYSE'], # geo group. jailing service florida. 6.4%
+        ['SID',1.0,5.0,'NYSE'], # steel in brazil
         ['VLO',45.0,70.0], # oil refinery 3.9% dividend
         ['ABBV',50.0,70.0], # pharma 4.0% dividend
         ['WDC',35.0,80.0], # western digital 4.2% dividend
@@ -464,8 +505,11 @@ stock_list = [
         ['DIA',120.0,200.0], # Dow jones 
         ['NDAQ',40.0,70.0], # nasdaq trader. 1.7% dividend
         ['TSN',40.0,70.0], # tyson foods. 1.% dividend
+        ['ANDE',40.0,70.0,'NASDAQ'], # andersons fertilzer comp. 1.7% dividend    
         ['GSK',35.0,70.0], # pharma. 6.% dividend          
-        ['BMY',55.0,70.0], # Bristol-Myers Squibb. 6.% dividend          
+        ['BMY',55.0,70.0], # Bristol-Myers Squibb. 2.75% dividend
+        ['LOW',55.0,100.0,'NYSE'], # LOWES 2.% dividend
+        ['HD',85.0,180.0,'NYSE'], # Home depot 2.% dividend     
         ['CRM',50.0,75.0], # salesforce. cloud platform service. 0.% dividend. nielsen is using them       
         ['ADP',75.0,100.0], # automatic data processing. cloud platform service. 2.% dividend. 
         ['INFY',15.0,25.0], # infosys. IT/software company. 2.% dividend          
@@ -560,7 +604,7 @@ stock_list = [
          ['V',65.0,100.0], # visa. 0.7%
          ['MO',50.0,70.0], # tobacco company. Altria 3%
          ['RAI',40.0,60.0], # reynolds stock. tobacco. 3%
-         ['TAP',80.0,120.0], # molson-coors. 1.7%         
+    #['TAP',80.0,120.0], # molson-coors. 1.7%         
          ['STZ',140.0,180.0], # constellation drinks stock. 1%
          ['BWLD',100.0,180.0], # BW3's
          ['TXRH',35.0,80.0], # texas road house
@@ -575,19 +619,34 @@ stock_list = [
          ['BKS',7.0,15.0], # barnes & nobles. 5% dividend
          ['DNKN',35.0,55.0,'NASDAQ'], # dunkin doughnuts. 2.7% dividend         
          ['SBUX',35.0,75.0,'NASDAQ'], # starbucks. 1.5% dividend         
-         ['KKD',15.0,30.0,'NYSE'], # krispy kreme 
+    #['KKD',15.0,30.0,'NYSE'], # krispy kreme 
          ['JVA',4.0,10.0,'NASDAQ'], # JAVA. pure coffee holding
          ['VIAB',30.0,80.0,'NASDAQ'], # viacom 3.7% dividend
 
          ['^DJI',17.0e3,22.0e3,'NYSE'], # DJIA
          ['XTN',30.0,80.0,'NYSE'], # S&P transport
          ['DJTA',7.0e3,10.0e3,'NYSE'], # DJIA transport
+         ['CSX',20.0,60.0,'NASDAQ'], # Train manufacture. 1.6%
+         ['SB',1.0,2.0,'NYSE'], # safe builder. 2.0% 
          ['VIOO',60.0,150.0,'NYSE'], # small cap
          ['MDY',200.0,300.0,'NYSE'], # mid cap
          ['GS',150.0,300.0,'NYSE'], # Goldman saks. 1% dividend
+            ['FAF',20.0,70.0,'NYSE'], # investment. 3.5.% dividend        
          ['JPM',65.0,120.0,'NYSE'], # JPM chase. 2% dividend
          ['PNC',90.0,150.0,'NYSE'], # PNC bank. 2% dividend
-         ['VGT',90.0,150.0,'NYSEARCA'], # Vanguard information tech. 1.4% dividend                           
+         ['VGT',90.0,150.0,'NYSEARCA'], # Vanguard information tech. 1.4% dividend
+    ['^RUT',900.0,1500.0,'INDEXRUSSELL'], # russel 2000
+    ['^RUA',900.0,1500.0,'INDEXRUSSELL'], # russel 3000
+    ['^RUI',900.0,1500.0,'INDEXRUSSELL'], # russel 1000 growth index
+    ['IWS',30.0,500.0,'NYSEARCA'], # russel 2000. 1.7% dividend
+    ['IWM',30.0,500.0,'NYSEARCA'], # russel midcaps. 2.3% dividend
+    ['IWO',30.0,500.0,'NYSEARCA'], # russel 2000 growth index. 1.2% dividend
+    ['IWN',30.0,500.0,'NYSEARCA'], # russel 2000 value index. 2.3% dividend
+    ['IWB',30.0,500.0,'NYSEARCA'], # russel 1000 index. 2.4% dividend
+    ['IWL',30.0,500.0,'NYSEARCA'], # russel top 200 1.88% dividend
+    ['IWF',30.0,500.0,'NYSEARCA'], # russel 1000 growth index. 1.8% dividend
+    ['^VIX',0.0,20.0,'INDEXCBOE'], # Volatility Index. look for a point where the price is 10 points from the MA. spikes indicate fear
+
          #['NTDOY',30.0,80.0,'OTCMKTS'], # viacom 3.7% dividend         
         #['SPY',60.0,90.0], # spyder large cap mutual fund
         #['VIG',60.0,90.0], # vanguard large cap mutual fund 3.1% dividend

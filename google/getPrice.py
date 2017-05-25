@@ -1,6 +1,8 @@
 from googlefinance import getQuotes
 import json
 import time
+from time import mktime
+import base
 import ROOT
 import urllib2
 import datetime
@@ -8,7 +10,9 @@ import send_sms
 import sys
 import pickle
 import genHTML as myHTML
+import FillHourlyServer
 out_path = '/Users/schae/testarea/finances'
+out_path = '/home/doug/testarea/finance'
 
 REPORT_SELL_ONLY_IF_I_OWN=True
 #0 make the current script stable enough to run all day. Perhaps compress the data saved
@@ -23,6 +27,10 @@ LIST_OF_MESSAGES={} #ticker and price
 class Data():
     def __init__(self,tick,vals):
         self.ticker = tick
+        self.prev_close_price = None
+        self.div = None
+        
+        self.percent_change=0.0
         self.rsi = float(vals[1])
         self.rsi_overbought_price = float(vals[2])
         self.rsi_underbought_price = float(vals[3])
@@ -32,20 +40,55 @@ class Data():
         self.stocks_i_own = ['SLP','HOG'] # don't print to sell unless I own them
         if not REPORT_SELL_ONLY_IF_I_OWN:
             self.stocks_i_own =[]
-
+        self.price = -1.0
         self.ma_20day = -1.0
         self.ma_50day = -1.0
         self.ma_100day = -1.0
         self.ma_200day = -1.0
+        self.percentb = -1.0
+        self.bolangerbandsize = -1.0
+        self.jan1_price=-1.0
+        self.ma_decision_100 = ''
+        self.ma_decision_50 = ''
+        
+        self.volume = -1.0        
+        self.avg_volume = -1.0
+        self.yesterday_volume = -1.0
+        self.obv = -1.0                
+        self.frac_volume = -1.0
+        self.volatility = -1.0        
+        self.avg_volatility = -1.0                
+        self.frac_volatility = -1.0        
+        self.cmf = -1.0
+        
     def AddMA(self, vals):
         if len(vals)>4:
             self.ma_20day = float(vals[1].strip())
             self.ma_50day = float(vals[2].strip())
             self.ma_100day = float(vals[3].strip())
             self.ma_200day = float(vals[4].strip().rstrip('\n'))
-
+            self.percentb = float(vals[5].strip().rstrip('\n'))
+            self.bolangerbandsize = float(vals[6].strip().rstrip('\n'))
+            self.jan1_price = float(vals[7].strip().rstrip('\n'))
+            self.ma_decision_100 =vals[8].strip().rstrip('\n')
+            self.ma_decision_50 =vals[9].strip().rstrip('\n')
+    def AddDividend(self, div,prev_close_price):
+        self.div = div
+        self.prev_close_price = prev_close_price
+    def AddOBV(self, vals):
+        if len(vals)>4:
+            self.volume = float(vals[1].strip())
+            self.yesterday_volume = float(vals[2].strip())
+            self.volatility = float(vals[3].strip())
+            self.avg_volatility = float(vals[4].strip())
+            self.cmf = float(vals[5].strip().rstrip('\n'))
+        if len(vals)>6:
+            self.obv = float(vals[6].strip().rstrip('\n'))            
+            self.avg_volume = float(vals[7].strip().rstrip('\n'))
+            self.frac_volume = self.avg_volume
     def AddMAString(self, price):
         rline=''
+        self.price = price
         if price<0.0:
             return rline
         if self.ma_20day>0.0:
@@ -112,6 +155,15 @@ def GetLimits():
             vv[vals[0]].AddMA(vals)
     finma.close()
     
+    finobv = open(out_path+'/yahoo-finance/obv/obv_limits.txt','r')
+    for f in finobv:
+        if len(f.strip())==0:
+            continue
+        vals = f.split(',')
+        if vals[0] in vv:
+            vv[vals[0]].AddOBV(vals)
+    finobv.close()
+
     return  vv
 
 #----------------------
@@ -186,12 +238,15 @@ def check(flist, fout, ticker='GOOGL',min_price=710.0, max_price=805.0, stock_ex
         return False
     price=0.0
     day_start_price=0.0
+    div=-1.0
     #print ticker
     try:
         price = float(googl['LastTradeWithCurrency'])
         day_start_price=-1.0
         if len(googl['PreviousClosePrice'].strip())>0.0:
             day_start_price= float(googl['PreviousClosePrice'])
+        if 'Dividend' in googl and len(googl['Dividend'].strip())>0.0:   
+            div = float(googl['Dividend'])
     except ValueError:
         #print 'CRASH: ',googl['LastTradeWithCurrency']
         #print 'CRASH:',googl['PreviousClosePrice']
@@ -200,7 +255,8 @@ def check(flist, fout, ticker='GOOGL',min_price=710.0, max_price=805.0, stock_ex
             return False
         price = float(googl['LastTradeWithCurrency'].strip('CHF').strip('$').replace('&#8364;','').strip('GBX').replace(',',''))
         day_start_price= float(googl['PreviousClosePrice'].strip('CHF').strip('$').strip('GBX').replace('&#8364;','').replace(',',''))
-        
+        if 'Dividend' in googl and len(googl['Dividend'].strip())>0.0: 
+            div= float(googl['Dividend'].strip('CHF').strip('$').strip('GBX').replace('&#8364;','').replace(',',''))
     if isPreMarket:
         a,b,c=fetchPreMarket(fout, ticker, stock_exchange)
         price = c
@@ -224,7 +280,7 @@ def check(flist, fout, ticker='GOOGL',min_price=710.0, max_price=805.0, stock_ex
                 hist=a
                 break
         if hist!=None:
-            old_price = float(hist['LastTradeWithCurrency'])
+            old_price = float(hist['LastTradeWithCurrency'].strip('GBX').strip('CHF').strip('$').strip(',').replace(',',''))
             old_price_perct_change=0.0
             if old_price>0.0:
                 old_price_perct_change = 100.0*(price-old_price)/old_price
@@ -234,6 +290,8 @@ def check(flist, fout, ticker='GOOGL',min_price=710.0, max_price=805.0, stock_ex
                 line+='. First followed at %0.2f. Change of \033[1;31m %0.2f \033[0m.' %(old_price,old_price_perct_change)
     # check the position relative to the MA
     if ticker in map_for_rsi:
+        map_for_rsi[ticker].AddDividend(div, day_start_price)
+        map_for_rsi[ticker].percent_change = percent_change
         line+=map_for_rsi[ticker].AddMAString(price)
     fout.write(line+'\n')
     # check the position relative to RSI
@@ -270,7 +328,7 @@ def check(flist, fout, ticker='GOOGL',min_price=710.0, max_price=805.0, stock_ex
         #c1.Draw()
         #c1.Update()
         #c1.WaitPrimitive()
-
+    return price
     #print 'done'
     #googl= json.dumps(getQuotes('GOOGL'), indent=2)
     #for i in googl:
@@ -286,7 +344,7 @@ f = open(out_path+'/googlefinance/out/stocks_%s_%s_%s.txt' %(t.tm_year,t.tm_mon,
 history_stock_info=None
 if not Pickle:
     #history_stock_info = pickle.load( open( out_path+"/googlefinance/out/stocks_2016_2_5.p", "rb" ) )
-    history_stock_info = pickle.load( open( out_path+"/googlefinance/out/stocks_2016_3_10.p", "rb"))
+    history_stock_info = pickle.load( open( out_path+"/googlefinance/out/stocks_2017_1_3.p", "rb"))
 while True:
 
     t = time.localtime()
@@ -310,12 +368,11 @@ while True:
         if (t.tm_hour<15.0 or (t.tm_hour==15 and t.tm_min<30)) or t.tm_hour>22.0:
             isPreMarket=True
     elif 'EST' == time.tzname[0].strip():
-        if t.tm_hour<7.0 or t.tm_hour>16.0:
+        if t.tm_hour<7.0 or t.tm_hour>17.0:
             f.write( 'market is not in session\n')
             break;
         if (t.tm_hour<9.0 or (t.tm_hour==9 and t.tm_min<30)) or t.tm_hour>15.0:
             isPreMarket=True
-            
 
     stock_list = [
         # Check stocks
@@ -324,13 +381,50 @@ while True:
         ['AAPL',86.0,110.0,'NASDAQ'], # apple
         ['MAT',25.0,40.0,'NYSE'], # matel
         ['FB',93.0,130.0,'NASDAQ'],
+        ['X',20.0,55.0,'NYSE'],  # steel industry
+        ['XME',20.0,55.0,'NYSEARCA','s&p metals and miners'],  # 0.8% dividend
+        ['CLF',2.0,55.0,'NYSE'],  # iron ore company
+        ['FLR',2.0,155.0,'NYSE'],  # construction. texas 1.5%
+        ['GLDD',2.0,155.0,'NASDAQ','dregding & land reclaim'],  # Great lakes dredge and dock
+        ['NUE',2.0,155.0,'NYSE'],  # nucor 2.5% mini-steel maker
+        ['GVA',2.0,155.0,'NYSE'],  # granite. civil engineering firm. california. 0.95%
+        ['SUM',2.0,155.0,'NYSE'],  # summit materials (denver)
+        ['SCCO',20.0,55.0,'NYSE'],  # copper company 0.5%
+        ['SPR',20.0,105.0,'NYSE'],  # spirit airlines 0.7%
+        ['SFLY',20.0,105.0,'NASDAQ'],  # spirit airlines 0.7%
+        ['NLSN',30.0,68.0,'NYSE'],  # 3% div. Nielsen
+        ['PG',30.0,608.0,'NYSE'],  # 3% div. P&G
+        ['UN',30.0,68.0,'NYSE'],  # 3% div. unilever
+        ['UCTT',3.0,68.0,'NASDAQ','ultra-clean holdings'],  # ultra clean holdings        
+        ['DE',30.0,608.0,'NYSE'],  # 3% div. john deere
+        ['MON',30.0,608.0,'NYSE'],  # 2% div. Monsanto        
+        ['SNA',30.0,558.0,'NYSE'],  # snap on. 1.6%        
         ['MPC',32.0,48.0,'NYSE'],  # marathon gas refinery
+        ['OXY',30.0,98.0,'NYSE'],  # occidental petrol. 4.5%
+        ['CRZO',20.0,98.0,'NASDAQ','carrizo oil. drilling and wells'],  # carrizo oil & gass
+        ['CCJ',20.0,98.0,'NASDAQ','sells uranium'],  # CCJ uranium    
+        ['SGG',5.0,98.0,'NASDAQ','sugar ETF'],  # sugar SGG        
+        ['EOG',30.0,198.0,'NYSE','eog-fracing'],  # fracing faster growing 0.7%
+        ['PXD',30.0,298.0,'NYSE','Pioneer-fracing'],  # fracing faster growing 0.07%
+        ['WES',30.0,98.0,'NYSE','western gas'],  # western gas. 5% 
+        ['WNR',25.0,80.0,'NYSE'],  # western refinery 4.% dividend.
         ['CHK',4.0,7.0,'NYSE'],  # cheseapeak
+        ['FSLR',10.0,500.0, 'NASDAQ'], #first solar, arizona based
+    #['SUNEQ',10.0,500.0, 'NASDAQ'], #first solar, arizona based
+        ['SPWR',10.0,500.0, 'NASDAQ'], # sun power, san jose based
+        ['SO',10.0,500.0, 'NYSE'], # southern co, 4.7%
+        ['TSL',10.0,500.0, 'NYSE'], # trina solar limited, chinese
+        ['EIX',10.0,500.0, 'NYSE'], # edison international, 2.8% solar
+        ['NEE',10.0,500.0, 'NYSE'], # nextera energy, 2.7%, florida
+        ['PCG',10.0,500.0, 'NYSE'], # PG&E, 3%, san fransico        
         ['KORS',45.0,60.0,'NYSE'], # cosmetics
         ['NGL',5.0,15.0,'NYSE'], # pipeline company
+        ['ETP',5.0,55.0,'NYSE'], # pipeline company. 11%
+        ['ETE',5.0,55.0,'NYSE'], # pipeline company. 5.9%
         ['CVX',78.0,100.0,'NYSE'], # chevron
-        ['UA',35.0,50.0,'NYSE'], # under armour
+        ['UAA',35.0,50.0,'NYSE'], # under armour
         ['KR',35.0,50.0,'NYSE'], # kroger
+        ['SKT',25.0,50.0,'NYSE'], # tanger, 3.5% dividend        
         ['TGT',65.0,85.0,'NYSE'], # target. 3%
         ['CVS',80.0,120.0,'NYSE'], # CVS
         ['TFM',25.0,35.0,'NASDAQ'], # fresh market
@@ -345,23 +439,34 @@ while True:
         ['JACK',50.0,90.0,'NASDAQ'], # jack in the box
         ['F',10.0,15.0,'NYSE'], # ford
         ['GM',25.0,40.0,'NYSE'], # GM
+        ['TM',25.0,200.0,'NYSE'], # toyota 3.3%
+        ['HMC',25.0,200.0,'NYSE'], # honda 2%
+        ['THO',10.0,150.0,'NYSE'], # thor. sports utility vehicles        
         ['VZ',45.0,55.0,'NYSE'], # verizon
-        ['M',35.0,55.0,'NYSE'], # macy's 
+        ['AMT',45.0,155.0,'NYSE'], # connection tower company. 2.2% dividend  
+        ['M',35.0,55.0,'NYSE'], # macy's
+        ['TUES',1.0,55.0,'NASDAQ'], # tuesday morning corp
+        ['SXI',1.0,155.0,'NYSE'], # standex   
         ['MMM',132.0,170.0,'NYSE'], # 3M
         ['TSO',50.0,105.0,'NYSE'], # Tesoro
         ['NTI',20.0,30.0,'NYSE'], # northern tier refinery. pays 15 % dividend
         ['INTC',25.0,34.0,'NASDAQ'], # intel 3.55% dividend
+        ['NVDA',25.0,234.0,'NASDAQ'], # nvidia 0.55% dividend            
         ['BCS',5.0,15.0,'NYSE'], # intel 3.55% dividend
         ['CS',5.0,15.0,'NYSE'], # credit suisse banking stock. 6.7% dividend
         ['UBS',8.0,20.0,'NYSE'], # ubs. 6.4% dividend
         ['DB',8.0,20.0,'NYSE'], # deuchee bank.        
         ['EBAY',20.0,30.0,'NASDAQ'], # ebay
+        ['BAC',10.0,50.0,'NYSE'], # bank of america. 1.2%
+        ['MS',10.0,80.0,'NYSE'], # morgan stanley 1.7%        
         ['UNH',100.0,140.0,'NYSE'], # united health care
         ['CI',120.0,180.0,'NYSE'], # health care. cigna
         ['PFE',25.0,38.0,'NYSE'], # pfizer 4% dividend
         ['AET',75.0,120.0,'NYSE'], # aetna 1% dividend
+        ['TDOC',75.0,120.0,'NYSE','teladoc'], # online doctor        
         ['HUM',145.0,190.0,'NYSE'], # humara 1% dividend
         ['TFX',120.0,160.0,'NYSE'], # teleflex 1% dividend. medical devices. wayne, PA
+        ['FMS',10.0,160.0,'NYSE','Fresenius Medical supply, Germany'], # Fresenius 1% dividend. medical supply        
         ['LMAT',10.0,18.0,'NASDAQ'], # le maitre 1% dividend. medical devices.
         ['MSEX',23.0,40.0,'NASDAQ'], # NJ water company. 2.7% dividend
         ['WTR',30.0,40.0,'NYSE'], # PA water company
@@ -380,24 +485,40 @@ while True:
         ['GVP',2.0,3.0,'NYSEMKT'], # GSE nuclear, oil simulations company
         ['TAP',80.0,100.0,'NYSE'], # molson beer. 1.8% dividend
         ['RTN',115.0,160.0,'NYSE'], # ratheon. defense. 2.1% dividend
+        ['CXW',15.0,300.0,'NYSE'], # corecivics. jailing. 5.8% dividend
+        ['GEO',15.0,300.0,'NYSE'], # geo group. jailing service florida. 6.4%   
+        ['GD',115.0,260.0,'NYSE'], # general dynamics. 1.6%
+        ['GE',15.0,260.0,'NYSE'], # general electric. 3.2%
+        ['SID',1.0,5.0,'NYSE'], # steel in brazil
         ['VLO',45.0,70.0,'NYSE'], # oil refinery 3.9% dividend
         ['ABBV',50.0,70.0,'NYSE'], # pharma 4.0% dividend
         ['WDC',35.0,80.0,'NYSE'], # western digital 4.2% dividend
         ['STX',30.0,50.0,'NYSE'], # seagate 7% dividend
         ['BLK',200.0,500.0,'NYSE'], # black rock 2.9% dividend
+        ['CLGX',20.0,500.0,'NYSE','Corelogic. financial services'], # CoreLogic
         ['ADC',20.0,50.0,'NYSE'], # real estate 4.9% dividend.
         ['NTRI',10.0,30.0,'NASDAQ'], # nutrisystem 4.0% dividend.                 
         ['MET',30.0,60.0,'NYSE'], # insurance 3.8% dividend.                 
         ['WY',20.0,35.0,'NYSE'], # real estate 5.% dividend.
         ['RYN',20.0,35.0,'NYSE'], # timber 3% dividend
-        ['GLD',108.0,125.0,'NYSE'], # gold 
+        ['GLD',108.0,125.0,'NYSE'], # gold
+        ['SLV',10.0,125.,'NYSE','silver ETF'], # silver
+        ['USLV',10.0,125.,'NYSE','silver 3x ETF'], # silver
+        ['SIL',10.0,125.,'NYSE','silver miners ETF'], # silver
+        ['SHNY',10.0,125.,'NYSE','silver miners 2X ETF'], # silver
+        ['USO',5.0,25.,'NYSE','crude oil'], # crude oil 
+        ['GDX',11.0,125.,'NYSEARCA','gold miners'], # gold miners 
+        ['NUGT',1.0,125.0,'NYSEMKT'], # gold 
         ['DIA',120.0,200.0,'NYSE'], # Dow jones 
         ['NDAQ',40.0,70.0,'NASDAQ'], # nasdaq trader. 1.7% dividend
-        ['TSN',40.0,70.0,'NYSE'], # tyson foods. 1.% dividend        
+        ['TSN',40.0,70.0,'NYSE'], # tyson foods. 1.% dividend
+        ['ANDE',40.0,70.0,'NASDAQ'], # andersons fertilzer comp. 1.7% dividend. Maumee, oh
         #['NDX',2000.0,5000.0], # nasdaq index
-        ['GSK',35.0,70.0,'NYSE'], # pharma. 6.% dividend          
+        ['GSK',35.0,70.0,'NYSE'], # pharma. 6.% dividend
         ['BMY',55.0,70.0,'NYSE'], # Bristol-Myers Squibb. 6.% dividend          
-        ['CRM',50.0,75.0,'NYSE'], # salesforce. cloud platform service. 0.% dividend. nielsen is using them       
+        ['CRM',50.0,75.0,'NYSE'], # salesforce. cloud platform service. 0.% dividend. nielsen is using them
+        ['LOW',55.0,100.0,'NYSE'], # LOWES 2.% dividend
+        ['HD',85.0,180.0,'NYSE'], # Home depot 2.% dividend             
         ['ADP',75.0,100.0,'NYSE'], # automatic data processing. cloud platform service. 2.% dividend. 
         ['INFY',15.0,25.0,'NYSE'], # infosys. IT/software company. 2.% dividend          
         #['TCS',2000.0,2800.0], # TCS. IT/software company. 1.7% dividend          
@@ -406,6 +527,8 @@ while True:
         ['BP',20.0,45.0,'NYSE'], # british patroleum.  8.2% dividends
         ['NEE',100.0,140.0,'NYSE'], # florida electrical company.  2.7% dividends
         ['ABX',8.0,20.0,'NYSE'], #Barrick Gold mining company 0.6% dividend
+        ['SLW',8.0,20.0,'NYSE'], #  Silver Wheaton Corp 1.6% dividend. silver miner
+        ['EXK',1.0,4.0,'NYSE'], # Silver mine 22% dividend
         ['GG',10.0,20.0,'NYSE'], # Goldcorp mining company 1.6% dividend
         ['NEM',16.0,35.0,'NYSE'], # Newmont Mining gold mining company 0.4% dividend
         ['AUY',1.3,3.4,'NYSE'], # Yamana Gold mining company 2.5% dividend Canada
@@ -436,7 +559,8 @@ while True:
         ['VYM',60.0,90.0,'NYSE'], # vanguard large cap mutual fund 3.1% dividend
         ['IVE',70.0,130.0,'NYSE'], # ishare mutual fund
         
-        ['TSLA',200.0,300.0,'NASDAQ'], # united airlines       
+        ['TSLA',200.0,300.0,'NASDAQ'], # united airlines
+        ['BBBY',40.0,70.0,'NASDAQ'], # bed bath and beyond
         ['VA',30.0,70.0,'NASDAQ'], # virgin atlantic
         ['HOG',40.0,55.0,'NYSE'], # 3% dividend harley davidson
         ['S',2.0,5.0,'NYSE'], # sprint
@@ -446,8 +570,10 @@ while True:
         ['DDD',15.0,25.0,'NYSE'], # 3D printing manufacturer
         ['XONE',10.0,15.0,'NASDAQ'], # 3D printing manufacturer exone
         ['SSYS',20.0,40.0,'NASDAQ'], # 3D printing manufacturer exone
+        ['GLBS',5.0,70.0,'NASDAQ'], # globus maritime
         ['AMAT',13.0,27.0,'NASDAQ'], # chip gear manufacturer
         ['GPRO',10.0,19.0,'NASDAQ'], # go pro stock
+        ['QCOM',40.0,65.0,'NASDAQ'], # qualcomm - starting in drone market. 4% dividend 
         ['IXYS',10.0,15.0,'NASDAQ'], # parts manufacturer for drones        
         ['INVN',4.0,10.0,'NASDAQ'], # parts manufacturer for drones. motion control
         ['LMT',150.0,300.0,'NYSE'], # lockheed martin. 2.92
@@ -495,6 +621,7 @@ while True:
          ['BWLD',100.0,180.0,'NASDAQ'], # BW3's
          ['TXRH',35.0,80.0,'NASDAQ'], # texas road house
          ['CGNX',30.0,80.0,'NASDAQ'], # machine vision. 0.8%
+         ['MBLY',30.0,80.0,'NYSE','mobileye vision based driving'], # mobileye vision based driving        
          ['CFX',30.0,80.0,'NYSE'], # colfax?
          ['PCLN',1000.0,1500.0,'NASDAQ'], # priceline
          ['TRIP',50.0,70.0,'NASDAQ'], # trip adviser
@@ -508,6 +635,34 @@ while True:
          ['KKD',15.0,30.0,'NYSE'], # krispy kreme 
          ['JVA',4.0,10.0,'NASDAQ'], # JAVA. pure coffee holding
          ['VIAB',30.0,80.0,'NASDAQ'], # viacom 3.7% dividend
+         ['XTN',30.0,80.0,'NYSEARCA'], # S&P transport
+         ['DJTA',7.0e3,10.0e3,'INDEXDJX'], # DJIA transport
+        ['IYT',100.0,200.0,'NYSEARCA','ishare DJIA transport'], # ishare DJIA transport    
+        ['CSX',20.0,60.0,'NASDAQ'], # Train manufacture. 1.6%
+        ['SB',1.0,2.0,'NYSE'], # safe builder. 2.0%         
+         ['VIOO',60.0,150.0,'NYSEARCA'], # small cap
+         ['MDY',200.0,300.0,'NYSEARCA'], # mid cap
+         ['GS',150.0,300.0,'NYSE'], # Goldman saks. 1% dividend
+        ['FAF',20.0,70.0,'NYSE'], # investment. 3.5.% dividend        
+         ['JPM',65.0,120.0,'NYSE'], # JPM chase. 2% dividend
+         ['PNC',90.0,150.0,'NYSE'], # PNC bank. 2% dividend
+         ['ADS',90.0,350.0,'NYSE'], # alliance data systems 0.9%
+         ['C',20.0,350.0,'NYSE'], # citigroup 1.06%
+         ['USB',20.0,350.0,'NYSE'], # us bancorp 2%        
+         ['VGT',90.0,150.0,'NYSEARCA'], # Vanguard information tech. 1.4% dividend
+         ['^DJI',17.0e3,22.0e3,'NYSE'], # DJIA
+                 ['INDEXRUSSELL:RUT',900.0,1500.0,'INDEXRUSSELL'], # russel 2000
+                 ['INDEXRUSSELL:RUA',900.0,1500.0,'INDEXRUSSELL'], # russel 3000
+                 ['INDEXRUSSELL:RUI',900.0,1500.0,'INDEXRUSSELL'], # russel 1000 growth index
+                 ['IWS',30.0,500.0,'NYSEARCA'], # russel 2000. 1.7% dividend
+                 ['IWM',30.0,500.0,'NYSEARCA'], # russel midcaps. 2.3% dividend
+                 ['IWO',30.0,500.0,'NYSEARCA'], # russel 2000 growth index. 1.2% dividend
+                 ['IWN',30.0,500.0,'NYSEARCA'], # russel 2000 value index. 2.3% dividend
+                 ['IWB',30.0,500.0,'NYSEARCA'], # russel 1000 index. 2.4% dividend
+                 ['IWL',30.0,500.0,'NYSEARCA'], # russel top 200 1.88% dividend
+        ['IWF',30.0,500.0,'NYSEARCA'], # russel 1000 growth index. 1.8% dividend
+        ['EL',30.0,500.0,'NYSE'], # estee lauder
+        #['VIX',0.0,500.0,'NYSEARCA'], # russel 1000 growth index. 1.8% dividend            
          #['NTDOY',30.0,80.0,'OTCMKTS'], # viacom 3.7% dividend  
          #['NTDOY',30.0,80.0,'OTC'], # viacom 3.7% dividend         
         #['WTI',20.0,35.0], # west texas intermediate. crude oil
@@ -531,11 +686,19 @@ while True:
         sys.exit(0)
 
     map_for_rsi = GetLimits()
+    connection,cursor=FillHourlyServer.GenerateTable(recreate=False)
+    mdt = datetime.datetime.fromtimestamp(mktime(t))
     # process the existing information
     for i in stock_list:
-        check(stock_info, f, i[0], i[1], i[2], i[3], history_stock_info, isPreMarket, map_for_rsi)
-
+        price=check(stock_info, f, i[0], i[1], i[2], i[3], history_stock_info, isPreMarket, map_for_rsi)
+        if not price:
+            price=0.0
+        FillHourlyServer.AddToTable(i[0], price, mdt, connection,cursor)
+        
     myHTML.main('%s-%s-%s' %(t.tm_hour, t.tm_min, t.tm_sec), map_for_rsi)
+    # close the SQL database of hourly data
+    FillHourlyServer.Close(connection);
+    myHTML.main('%s' %base.GetTimeStr(t), map_for_rsi) #t = time.localtime()  
     
     f.write('------------------------------------------\n')
     #print 'flush'
