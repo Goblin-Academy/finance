@@ -39,7 +39,7 @@ def RequestStocks(flist, fout):
             #sys.stdout.flush()
             googl = Share(flist[i])
             slist+=[googl]
-        except (urllib2.HTTPError,urllib2.URLError):
+        except (urllib2.HTTPError,urllib2.URLError,yahoo_finance.YQLResponseMalformedError):
             fout.write( 'Failed this round!!!! \n')
             fout.flush()
             time.sleep(5.0)
@@ -169,7 +169,7 @@ if True:
             line = stock_names[itern]+' '+myinfo[1][0]+' %s days ago' %(myinfo[1][1])
             ma_analysis_summary+=[line]
         if len(myinfo)>5:
-            maline+='%s,%0.2f,%0.2f,%0.2f,%0.2f\n' %(stock_names[itern],myinfo[2],myinfo[3],myinfo[4],myinfo[5])
+            maline+='%s,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%s,%s days ago %s,%s days ago %s\n' %(myinfo[8],myinfo[2],myinfo[3],myinfo[4],myinfo[5],myinfo[6],myinfo[7],myinfo[9],myinfo[0][1],myinfo[0][0],myinfo[1][1],myinfo[1][0])
         else:
             print 'ERROR - not enough info: ',myinfo
         itern+=1            
@@ -181,7 +181,7 @@ if True:
             ma_message+=ma+'\n'
         #send_sms.sendMessage(ma_message)
     # write out the Moving averages for later checking
-    fma = open('ma/ma_limits.txt','w')
+    fma = open(out_path+'/ma/ma_limits.txt','w')
     fma.write(maline)
     fma.close()
     #sys.exit(0)
@@ -246,7 +246,7 @@ if True:
     print '---------------'    
     print '---------------'
     print '---------------'
-    frsi = open('rsi/rsi_limits.txt','w')
+    frsi = open(out_path+'/rsi/rsi_limits.txt','w')
     rline=''
     for i in rsi_list:
         for j in i:
@@ -263,23 +263,71 @@ if True:
     itern=0
     for s in stocks_info:
         mahistory=None
-        if stock_names[itern] in history_map:
+        ticker=stock_names[itern]
+        if ticker in history_map:
             mahistory=history_map[stock_names[itern]]
         ref_history=None
-        if 'DIA' in history_map:
-            ref_history=history_map['DIA']            
-        myinfo = correl_analysis.runWithTicker(s,ref_hist=ref_history,history=mahistory)
+        # run a few correlation studies
+        correl_list = ['DIA']
+        if ticker=='GLD':
+            correl_list = ['DIA','GDX']
+        elif ticker=='GDX':
+            correl_list = ['DIA','GLD']
+        elif ticker=='SIL':
+            correl_list = ['DIA','SLV']
+        elif ticker=='SLV':
+            correl_list = ['DIA','SIL']
+        for corr in correl_list:
+            if corr in history_map:
+                ref_history=history_map[corr]
+            if ref_history:
+                myinfo = correl_analysis.runWithTicker(s,ref_hist=ref_history,history=mahistory)
         itern+=1
     #sys.exit(0)
 #END
 if True:
     itern=0
+    obv_list = []
     for s in stocks_info:
         mahistory=None
         if stock_names[itern] in history_map:
-            mahistory=history_map[stock_names[itern]] 
+            mahistory=history_map[stock_names[itern]]
+        # stored [ticker, volume, volatility, and CMF]
         myinfo = Vol_analysis.runWithTicker(s,history=mahistory)
+        if len(myinfo)<1:
+            continue
+        vola = []
+        nvol=0.0
+        for v in range(1,myinfo[1].GetNbinsX()):
+            vola+=[myinfo[1].GetBinContent(v)]
+            nvol+=1.0
+        volata = []
+        nvolat=0.0
+        for v in range(1,myinfo[2].GetNbinsX()):
+            volata+=[myinfo[2].GetBinContent(v)]
+            nvolat+=1.0
+        obv_list+=[[myinfo[0],
+                    myinfo[1].GetBinContent( myinfo[1].GetNbinsX()-1),
+                    sum(vola)/nvol,
+                    myinfo[2].GetBinContent( myinfo[2].GetNbinsX()-1),
+                    sum(volata)/nvolat,
+                    myinfo[3].GetBinContent( myinfo[3].GetNbinsX()-1),#chaikin
+                    myinfo[4].GetBinContent( myinfo[4].GetNbinsX()-1),#obv
+                    myinfo[5] # avg volume over 200 days
+                    ]]
         itern+=1
+        
+    fobv = open(out_path+'/obv/obv_limits.txt','w')
+    rline=''
+    for i in obv_list:
+        for j in i:
+            try:
+                rline+='%0.3f,'%(j)
+            except:            
+                rline+=j+','
+        rline+='\n'
+    fobv.write(rline)
+    fobv.close()
     #sys.exit(0)
 #END
 # pickle file for historical data from one date

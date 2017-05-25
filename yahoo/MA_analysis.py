@@ -7,12 +7,15 @@ import ROOT
 import base
 import socket
 import urllib2
+import ReadSQL
 from array import array
 Pickle=False
 loadPickle=False
 WAIT=base.WAIT
 
 out_path = base.out_path
+out_path_www = base.out_path_www
+
 out_file_type = base.out_file_type
 #-----------------------------------------    
 def GetShare(ticker='YHOO'):
@@ -42,11 +45,13 @@ def GetHistoricalData(yahoo, start_date=None): #'2016-02-07'
         while history_stocks_info==None:
             try:
                 history_stocks_info = yahoo.get_historical('2014-06-07', start_date)
-            except (socket.gaierror, socket.error, httplib.BadStatusLine, yahoo_finance.YQLResponseMalformedError, urllib2.HTTPError):
+            except (socket.gaierror, socket.error, httplib.BadStatusLine, yahoo_finance.YQLResponseMalformedError, urllib2.HTTPError, urllib2.URLError):
                 print 'socket.gaierror...retrying in 5s'
                 sys.stdout.flush()
                 history_stocks_info=None
-                time.sleep(30.0)
+                result = ReadSQL.OpenTable(ticker)
+                history_stocks_info = ReadSQL.YahooFormat(result)
+                #time.sleep(30.0)
     return history_stocks_info
 
 #---------------
@@ -73,6 +78,9 @@ def GetAverage(history, days = 50, start_date=None):
     avg=0.0
     iter_days = 0
     for h in history:
+        if 'Date' not in h:
+            print 'WARNING could not find date'
+            continue
         this_t = base.GetTime(h['Date'])
         if this_t<=t:
             iter_days+=1
@@ -148,6 +156,8 @@ def GetExpMovingAverage(history, days = 50, start_date=None):
     this_date_index = 0
     for hindex in range(0,len(history)):
         h = history[len(history)-hindex-1]
+        if 'Date' not in h:
+            continue 
         this_t = base.GetTime(h['Date'])
         #this_ttd = datetime.datetime.fromtimestamp(time.mktime(this_t))
         if this_t<=t:
@@ -158,7 +168,9 @@ def GetExpMovingAverage(history, days = 50, start_date=None):
     if (this_date_index-days+1)>=0:
         #print this_date_index-days+1,' ',len(history)
         for hindex in range(this_date_index-days+1,len(history)):
-            h = history[len(history)-hindex-1]
+            h = history[len(history)-hindex-1] 
+            if 'Date' not in h:
+                continue
             this_t = base.GetTime(h['Date'])
             if this_t<=t:
                 iter_days+=1
@@ -208,8 +220,14 @@ def Draw(history, days = 50, start_date=None):
     nday=0
     ticker='N/A'
     first_date=None
+    jan1_price = -1.0
+    jan1_date = time.localtime()
     for h in history:
         this_t = base.GetTime(h['Date'])
+        # get the first price of the year
+        if jan1_date.tm_year==this_t.tm_year and this_t.tm_mon==1 and (this_t.tm_mday==1 or this_t.tm_mday==2 or this_t.tm_mday==3):
+            jan1_price=h['Open']
+        
         if this_t<=t:
             if (nday)<(days):
                 x_axis+=[nday]
@@ -294,9 +312,9 @@ def Draw(history, days = 50, start_date=None):
         hbolma.SetBinContent(i+1,bins_ma_bol[ashift+itmp])
         
         if bins_ma_bol[itmp]>0.0:
-            hbolbandsize.SetBinContent(i+1,2.0*bins_ma_bolsigma[itmp]/bins_ma_bol[itmp])
+            hbolbandsize.SetBinContent(i+1,2.0*bins_ma_bolsigma[itmp]/bins_ma_bol[ashift+itmp])
         if bins_ma_bolsigma[itmp]>0.0:
-            hbolpercentb.SetBinContent(i+1,(bins_price[itmp]-bins_ma_bol[itmp]-bins_ma_bolsigma[itmp])/(4.0*bins_ma_bolsigma[itmp]))            
+            hbolpercentb.SetBinContent(i+1,(bins_price[itmp+1]-(bins_ma_bol[ashift+itmp]-bins_ma_bolsigma[itmp]))/(2.0*bins_ma_bolsigma[itmp]))            
     for i in range(0,len(x_axis)-1):
         hma20day.SetBinContent(i+1,bins_ma_20day[i])
     for i in range(0,len(x_axis)-1):
@@ -318,7 +336,7 @@ def Draw(history, days = 50, start_date=None):
     hma200day.SetMarkerColor(6)
 
     hprice.SetLineColor(1)
-    hprice.SetFillColor(0)
+    hprice.SetFillColor(1)
     hprice.GetXaxis().SetRangeUser(0,float(days))
     hprice.Draw()
     hprice.Draw('same lp e2')
@@ -328,10 +346,17 @@ def Draw(history, days = 50, start_date=None):
     hma200day.Draw('lpsame')
 
     # legend
+    hprice_tmp = hprice.Clone()
+    hprice_tmp.SetLineColor(hprice.GetLineColor())
+    hprice_tmp.SetMarkerColor(hprice.GetMarkerColor())
+    hprice_tmp.SetFillColor(0)
     leg = ROOT.TLegend(0.45, 0.2, 0.85, 0.4);
     leg.SetBorderSize(0);
     leg.SetFillStyle(0);
-    leg.AddEntry(hprice, "Closing Price");
+    leg1 = ROOT.TLegend(0.45, 0.1, 0.85, 0.3);
+    leg1.SetBorderSize(0);
+    leg1.SetFillStyle(0);
+    leg.AddEntry(hprice_tmp, "Closing Price");
     leg.AddEntry(hma20day, "20 Day MA");
     leg.AddEntry(hma50day, "50 Day MA");
     leg.AddEntry(hma100day, "100 Day MA");
@@ -345,7 +370,8 @@ def Draw(history, days = 50, start_date=None):
     c1.Update()
     if start_date==None:
         start_date = first_date
-    c1.SaveAs(out_path+'/ma/'+ticker+'_'+start_date+'.'+out_file_type)
+    new_ticker = ticker.replace('%5e','_')  
+    c1.SaveAs(out_path_www+'/ma/'+new_ticker+'_'+start_date+'.'+out_file_type)
     if WAIT:
         c1.WaitPrimitive()
         raw_input('waiting...')
@@ -372,14 +398,15 @@ def Draw(history, days = 50, start_date=None):
     pads[0].cd()
     hprice.Draw()
     hprice.Draw('lp same e2')
-    hbolma.Draw('same')
-    hbolbandup.Draw('same')
-    hbolbanddw.Draw('same')
+    hbolma.Draw('same lp')
+    hbolbandup.Draw('same lp')
+    hbolbanddw.Draw('same lp')
+    hprice.Draw('lp same e2')    
     #hbolbandsize.Draw()
-    leg.Clear()
-    leg.AddEntry(hbolma,'%s MA' %(NbolgangerMA))
-    leg.AddEntry(hbolbandup,'Bolanger Band')
-    leg.Draw()
+    leg1.Clear()
+    leg1.AddEntry(hbolma,'%s MA' %(NbolgangerMA))
+    leg1.AddEntry(hbolbandup,'Bolanger Band')
+    leg1.Draw()
     pads[1].cd()
     hbolpercentb.SetLineColor(2)
     hbolpercentb.SetMarkerColor(2)
@@ -400,17 +427,22 @@ def Draw(history, days = 50, start_date=None):
     c1.Update()
     if start_date==None:
         start_date = first_date
-    new_ticker = ticker.replace('^','_')
-    c1.SaveAs(out_path+'/ma/'+new_ticker+'_'+start_date+'bol.'+out_file_type)
+    new_ticker = ticker.replace('%5e','_')
+    c1.SaveAs(out_path_www+'/ma/'+new_ticker+'_'+start_date+'bol.'+out_file_type)
     if WAIT:
         c1.WaitPrimitive()
         raw_input('waiting...')
-    return [[decision_100day,decision_ndays_100days],
+    aa =  [[decision_100day,decision_ndays_100days],
             [decision_50day,decision_ndays_50days],
             bins_ma_20day[len(bins_ma_20day)-1],
             bins_ma_50day[len(bins_ma_50day)-1],
             bins_ma_100day[len(bins_ma_100day)-1],
-            bins_ma_200day[len(bins_ma_200day)-1]]
+            bins_ma_200day[len(bins_ma_200day)-1],
+            hbolpercentb.GetBinContent(hbolpercentb.GetNbinsX()),
+           0.2*hbolbandsize.GetBinContent(hbolbandsize.GetNbinsX())/4.0*bins_ma_20day[len(bins_ma_20day)-1],
+           ticker,jan1_price]
+    #print aa
+    return aa
 
 #-----------------------------------------
 def runWithTicker(yahoo, history=None):
@@ -428,7 +460,7 @@ def runWithTicker(yahoo, history=None):
     return Draw(history, 200, base.GetToday()),history
     #print 'Done'        
 #-----------------------------------------
-def run(ticker='TFM'):
+def run(ticker='JACK'):
     if not WAIT:
         ROOT.gROOT.SetBatch(True)
     
